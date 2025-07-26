@@ -3,7 +3,7 @@ project(
   'c',
   version: '1.6.50',
   license: 'libpng-2.0',
-  meson_version: '>=0.61.0',
+  meson_version: '>=0.54.0',
 )
 
 png_versions = meson.project_version().split('.')
@@ -34,13 +34,13 @@ if host_machine.system() == 'windows'
   endif
 endif
 
-libpng_deps = [
-  dependency('zlib'),
-  cc.find_library(
-    'm',
-    required: false,
-  ),
-]
+zlib_dep = dependency('zlib')
+libm = cc.find_library(
+  'm',
+  required: false,
+)
+
+libpng_deps = [zlib_dep, libm]
 
 png_src = files(
   'png.c',
@@ -109,22 +109,6 @@ install_headers(
   subdir: pngincsubdir,
 )
 
-pkgconfig = import('pkgconfig')
-
-pkgconfig.generate(
-  libpng,
-  name: 'libpng16',
-  description: 'Loads and saves PNG files',
-  # -lz added just to match pkgconfig file generated via GNU autoconf
-  libraries_private: ['-lz'],
-)
-
-install_symlink(
-  'libpng.pc',
-  install_dir: get_option('libdir') / 'pkgconfig',
-  pointing_to: 'libpng16.pc',
-)
-
 libpng_dep = declare_dependency(
   include_directories: include,
   link_with: libpng,
@@ -133,6 +117,32 @@ libpng_dep = declare_dependency(
 # Keep the older dependency name for backwards-compat with old-style
 # dependency(..., fallback ['libpng': 'png_dep'])
 png_dep = libpng_dep
+
+pkgconfig = import('pkgconfig')
+
+pkgconfig.generate(
+  libpng,
+  name: 'libpng',
+  description: 'Loads and saves PNG files',
+  subdirs: pngincsubdir,
+)
+
+libpng_pkgconf_alias_names = ['libpng16']
+
+foreach libpng_pkgconf_alias_name : libpng_pkgconf_alias_names
+  # Using positional library object more than once leads to warning which we avoid to pass CI
+  # ('libpng| WARNING: Already generated a pkg-config file for png16')
+  pkgconfig.generate(
+    name: 'libpng',
+    description: 'Loads and saves PNG files',
+    filebase: libpng_pkgconf_alias_name,
+    libraries_private: [libm],
+    libraries: ['-L${libdir}', '-l' + libpng.name()],
+    requires_private: [zlib_dep],
+    subdirs: pngincsubdir,
+    install_dir: get_option('libdir') / 'pkgconfig',
+  )
+endforeach
 
 png_test = executable(
   'pngtest',
