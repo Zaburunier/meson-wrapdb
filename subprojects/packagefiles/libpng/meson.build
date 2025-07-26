@@ -3,7 +3,7 @@ project(
   'c',
   version: '1.6.50',
   license: 'libpng-2.0',
-  meson_version: '>=0.50.0',
+  meson_version: '>=0.61.0',
 )
 
 png_versions = meson.project_version().split('.')
@@ -109,32 +109,20 @@ install_headers(
   subdir: pngincsubdir,
 )
 
-cdata = configuration_data()
-cdata.set('prefix', get_option('prefix'))
-cdata.set('exec_prefix', get_option('prefix'))
-cdata.set('libdir', '${prefix}/' + get_option('libdir'))
-cdata.set('includedir', '${prefix}/' + get_option('includedir'))
-cdata.set('PNGLIB_MAJOR', png_major_version)
-cdata.set('PNGLIB_MINOR', png_minor_version)
-cdata.set('PNGLIB_VERSION', meson.project_version())
-# FIXME: should auto-generate pkg-config file to get this right
-cdata.set('LIBS', '-lz')
+pkgconfig = import('pkgconfig')
 
-configure_file(
-  input: 'libpng.pc.in',
-  output: 'libpng16.pc',
-  configuration: cdata,
-  install_dir: get_option('libdir') / 'pkgconfig',
-  install: true,
+pkgconfig.generate(
+  libpng,
+  name: 'libpng16',
+  description: 'Loads and saves PNG files',
+  # -lz added just to match pkgconfig file generated via GNU autoconf
+  libraries_private: ['-lz'],
 )
 
-# FIXME: this should be a symlink to libpng16.pc
-configure_file(
-  input: 'libpng.pc.in',
-  output: 'libpng.pc',
-  configuration: cdata,
+install_symlink(
+  'libpng.pc',
   install_dir: get_option('libdir') / 'pkgconfig',
-  install: true,
+  pointing_to: 'libpng16.pc',
 )
 
 libpng_dep = declare_dependency(
