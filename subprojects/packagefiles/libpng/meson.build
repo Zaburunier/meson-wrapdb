@@ -127,21 +127,37 @@ pkgconfig.generate(
   subdirs: pngincsubdir,
 )
 
-libpng_pkgconf_alias_names = ['libpng16']
+libpng_pkgconf_alias_names = ['lib' + png_libname]
 
 foreach libpng_pkgconf_alias_name : libpng_pkgconf_alias_names
-  # Using positional library object more than once leads to warning which we avoid to pass CI
-  # ('libpng| WARNING: Already generated a pkg-config file for png16')
-  pkgconfig.generate(
-    name: 'libpng',
-    description: 'Loads and saves PNG files',
-    filebase: libpng_pkgconf_alias_name,
-    libraries_private: [libm],
-    libraries: ['-L${libdir}', '-l' + libpng.name()],
-    requires_private: [zlib_dep],
-    subdirs: pngincsubdir,
-    install_dir: get_option('libdir') / 'pkgconfig',
-  )
+  if meson.version().version_compare('>=0.61')
+    install_symlink(
+      libpng_pkgconf_alias_name + '.pc',
+      install_dir: get_option('libdir') / 'pkgconfig',
+      pointing_to: 'libpng.pc',
+    )
+  else
+    # install_symlink() is unavailable on Meson before 0.61.0, using dangerous workaround
+    # TODO: remove this branch in future
+
+    message(
+      'Due to old Meson release, ' ,
+       + libpng_pkgconf_alias_name + '.pc' + ' will be generated as standalone pkgconfig file instead of symbolic link to libpng.pc. This workaround is dangerous as it is possible to produce differ configs',
+    )
+
+    # Using positional library object more than once leads to warning which we avoid to pass CI
+    # ('libpng| WARNING: Already generated a pkg-config file for png16')
+    pkgconfig.generate(
+      name: 'libpng',
+      description: 'Loads and saves PNG files',
+      filebase: libpng_pkgconf_alias_name,
+      libraries_private: [libm],
+      libraries: ['-L${libdir}', '-l' + libpng.name()],
+      requires_private: [zlib_dep],
+      subdirs: pngincsubdir,
+      install_dir: get_option('libdir') / 'pkgconfig',
+    )
+  endif
 endforeach
 
 png_test = executable(
