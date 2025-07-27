@@ -3,7 +3,7 @@ project(
   'c',
   version: '1.6.50',
   license: 'libpng-2.0',
-  meson_version: '>=0.54.0',
+  meson_version: '>=0.50.0',
 )
 
 png_versions = meson.project_version().split('.')
@@ -34,13 +34,13 @@ if host_machine.system() == 'windows'
   endif
 endif
 
-zlib_dep = dependency('zlib')
-libm = cc.find_library(
-  'm',
-  required: false,
-)
-
-libpng_deps = [zlib_dep, libm]
+libpng_deps = [
+  dependency('zlib'),
+  cc.find_library(
+    'm',
+    required: false,
+  ),
+]
 
 png_src = files(
   'png.c',
@@ -119,45 +119,30 @@ libpng_dep = declare_dependency(
 png_dep = libpng_dep
 
 pkgconfig = import('pkgconfig')
-
 pkgconfig.generate(
   libpng,
   name: 'libpng',
   description: 'Loads and saves PNG files',
+  filebase: 'lib' + png_libname,
   subdirs: pngincsubdir,
 )
 
-libpng_pkgconf_alias_names = ['lib' + png_libname]
-
-foreach libpng_pkgconf_alias_name : libpng_pkgconf_alias_names
-  if meson.version().version_compare('>=0.61')
-    install_symlink(
-      libpng_pkgconf_alias_name + '.pc',
-      install_dir: get_option('libdir') / 'pkgconfig',
-      pointing_to: 'libpng.pc',
-    )
-  else
-    # install_symlink() is unavailable on Meson before 0.61.0, using dangerous workaround
-    # TODO: remove this branch in future
-
-    message(
-      'Due to old Meson release, ' + libpng_pkgconf_alias_name + '.pc' + ' will be generated as standalone pkgconfig file instead of symbolic link to libpng.pc. This workaround is dangerous as it is possible to produce differ configs',
-    )
-
-    # Using positional library object more than once leads to warning which we avoid to pass CI
-    # ('libpng| WARNING: Already generated a pkg-config file for png16')
-    pkgconfig.generate(
-      name: 'libpng',
-      description: 'Loads and saves PNG files',
-      filebase: libpng_pkgconf_alias_name,
-      libraries_private: [libm],
-      libraries: ['-L${libdir}', '-l' + libpng.name()],
-      requires_private: [zlib_dep],
-      subdirs: pngincsubdir,
-      install_dir: get_option('libdir') / 'pkgconfig',
-    )
-  endif
-endforeach
+if meson.version().version_compare('>=0.61')
+  install_symlink(
+    'libpng.pc',
+    install_dir: get_option('libdir') / 'pkgconfig',
+    pointing_to: 'lib' + png_libname + '.pc',
+  )
+else
+  # Meson won't let us generate the same .pc file twice, so generate one
+  # which Requires: the other one.
+  pkgconfig.generate(
+    name: 'libpng',
+    description: 'Loads and saves PNG files',
+    requires: libpng,
+    subdirs: pngincsubdir,
+  )
+endif
 
 png_test = executable(
   'pngtest',
