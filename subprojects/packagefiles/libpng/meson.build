@@ -141,8 +141,7 @@ foreach libpng_pkgconf_alias_name : libpng_pkgconf_alias_names
     # TODO: remove this branch in future
 
     message(
-      'Due to old Meson release, ' ,
-       + libpng_pkgconf_alias_name + '.pc' + ' will be generated as standalone pkgconfig file instead of symbolic link to libpng.pc. This workaround is dangerous as it is possible to produce differ configs',
+      'Due to old Meson release, ' + libpng_pkgconf_alias_name + '.pc' + ' will be generated as standalone pkgconfig file instead of symbolic link to libpng.pc. This workaround is dangerous as it is possible to produce differ configs',
     )
 
     # Using positional library object more than once leads to warning which we avoid to pass CI
